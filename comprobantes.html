@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Comprobantes</title>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 20px; }
+        .btn { padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; }
+        .btn-back { background: #3b82f6; color: white; }
+        .btn-delete { background: #ef4444; color: white; padding: 5px 10px; font-size: 0.8rem; }
+        .btn-verify { background: #10b981; color: white; padding: 5px 10px; font-size: 0.8rem; margin-right: 5px; }
+        .btn-verify.disabled { background: #475569; cursor: not-allowed; opacity: 0.6; }
+        
+        .tabla-comprobantes { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #334155; color: #fbbf24; }
+        
+        .img-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: zoom-in; border: 2px solid transparent; transition: 0.3s; }
+        .img-preview:hover { border-color: #fbbf24; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; cursor: zoom-out; }
+        .modal img { max-width: 90%; max-height: 90%; border-radius: 10px; box-shadow: 0 0 30px rgba(0,0,0,0.5); border: 3px solid #334155; }
+        
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .status-verified { background: #064e3b; color: #34d399; }
+        .status-pending { background: #78350f; color: #fbbf24; }
+
+        .empty { text-align: center; padding: 50px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📸 Comprobantes Recibidos</h1>
+    <a href="admin.html" class="btn btn-back">VOLVER AL PANEL</a>
+</div>
+
+<table class="tabla-comprobantes">
+    <thead>
+        <tr>
+            <th>Boleto</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Foto (Ver)</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody id="listaComprobantes"></tbody>
+</table>
+
+<div id="imageModal" class="modal" onclick="cerrarImagen()">
+    <img id="imgFull" src="">
+</div>
+
+<script>
+    function cargarComprobantes() {
+        const lista = document.getElementById('listaComprobantes');
+        const datos = JSON.parse(localStorage.getItem('registroComprobantes')) || [];
+        
+        if (datos.length === 0) {
+            lista.innerHTML = '<tr><td colspan="5" class="empty">No hay comprobantes registrados aún.</td></tr>';
+            return;
+        }
+
+        lista.innerHTML = '';
+        datos.forEach((item, index) => {
+            // Un item se considera verificado si tiene la propiedad 'estado' como 'verificado'
+            const esVerificado = item.estado === 'verificado';
+            
+            // Usamos item.numeros[0] o item.numero dependiendo de cómo venga el dato
+            const numMostrar = item.numeros ? item.numeros[0] : item.numero;
+
+            lista.innerHTML += `
+                <tr>
+                    <td><b style="color:#fbbf24;">#${numMostrar}</b></td>
+                    <td>${item.usuario || item.nombre || 'Sin nombre'}</td>
+                    <td>
+                        ${esVerificado 
+                            ? '<span class="status-badge status-verified">Verificado / Bloqueado</span>' 
+                            : '<span class="status-badge status-pending">Pendiente</span>'}
+                    </td>
+                    <td>
+                        <img src="${item.imagen || item.foto}" class="img-preview" onclick="verImagenGrande('${item.imagen || item.foto}')">
+                    </td>
+                    <td>
+                        <button class="btn btn-verify ${esVerificado ? 'disabled' : ''}" 
+                                onclick="verificarBoleto(${index})" 
+                                ${esVerificado ? 'disabled' : ''}>
+                            ${esVerificado ? '✓ Verificado' : 'Verificar'}
+                        </button>
+                        <button class="btn btn-delete" onclick="eliminarComprobante(${index})">Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function verificarBoleto(index) {
+        let registros = JSON.parse(localStorage.getItem('registroComprobantes')) || [];
+        let item = registros[index];
+        
+        // Obtenemos el número actual (manejando ambos formatos posibles)
+        let numBase = item.numeros ? item.numeros[0] : item.numero;
+        let numFormateado = numBase.toString().padStart(3, '0');
+
+        if(confirm(`¿Deseas verificar el boleto #${numFormateado}? Esto lo bloqueará visualmente en el panel.`)) {
+            
+            // APLICACIÓN DEL CAMBIO SOLICITADO:
+            // Actualizamos el objeto para que tenga la estructura que el Panel busca
+            item.estado = 'verificado';
+            item.numeros = [numFormateado]; // El panel busca "numeros" como array
+            
+            registros[index] = item;
+            localStorage.setItem('registroComprobantes', JSON.stringify(registros));
+
+            // También actualizamos la lista auxiliar de bloqueados para redundancia
+            let bloqueados = JSON.parse(localStorage.getItem('boletosBloqueados')) || [];
+            if (!bloqueados.includes(numFormateado)) {
+                bloqueados.push(numFormateado);
+                localStorage.setItem('boletosBloqueados', JSON.stringify(bloqueados));
+            }
+
+            alert(`Boleto #${numFormateado} verificado.`);
+            cargarComprobantes();
+        }
+    }
+
+    function eliminarComprobante(index) {
+        if(confirm("¿Seguro que quieres borrar este registro? El número se desbloqueará en el panel.")) {
+            let datos = JSON.parse(localStorage.getItem('registroComprobantes')) || [];
+            let itemABorrar = datos[index];
+            
+            // Obtener el número para quitarlo de la lista de bloqueados también
+            let numABorrar = itemABorrar.numeros ? itemABorrar.numeros[0] : itemABorrar.numero;
+            numABorrar = numABorrar.toString().padStart(3, '0');
+
+            // 1. Borrar del registro principal
+            datos.splice(index, 1);
+            localStorage.setItem('registroComprobantes', JSON.stringify(datos));
+
+            // 2. Borrar de la lista de bloqueados para que vuelva a gris
+            let bloqueados = JSON.parse(localStorage.getItem('boletosBloqueados')) || [];
+            bloqueados = bloqueados.filter(n => n !== numABorrar);
+            localStorage.setItem('boletosBloqueados', JSON.stringify(bloqueados));
+
+            cargarComprobantes();
+        }
+    }
+
+    function verImagenGrande(src) {
+        const modal = document.getElementById('imageModal');
+        const imgFull = document.getElementById('imgFull');
+        modal.style.display = "flex";
+        imgFull.src = src;
+    }
+
+    function cerrarImagen() {
+        document.getElementById('imageModal').style.display = "none";
+    }
+
+    // Cargar al iniciar
+    cargarComprobantes();
+</script>
+</body>
+</html>

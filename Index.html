@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteo Magno - $5,000</title>
+    <style>
+        /* ... (Tus estilos se mantienen intactos) ... */
+        :root { --primary: #3b82f6; --secondary: #f59e0b; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --whatsapp: #22c55e; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1100px; margin: auto; position: relative; }
+        .btn-admin-nav { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.05); color: #94a3b8; padding: 8px 15px; border-radius: 12px; text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; display: flex; align-items: center; gap: 5px; }
+        .btn-admin-nav:hover { background: var(--card); color: white; border-color: var(--primary); }
+        .header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 40px; border-radius: 24px; text-align: center; border: 1px solid #334155; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .header h1 { margin: 0; font-size: 2.2rem; background: linear-gradient(to right, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 25px; }
+        .stat-card { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+        .stat-card span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
+        .stat-card b { display: block; font-size: 1.2rem; margin-top: 5px; color: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; background: var(--card); padding: 25px; border-radius: 24px; max-height: 450px; overflow-y: auto; border: 1px solid #334155; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2); }
+        .boleto { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.05); }
+        .boleto:hover:not(.validado-naranja) { transform: translateY(-5px); box-shadow: 0 5px 15px var(--primary); z-index: 10; }
+        .disponible { background: #064e3b; color: #6ee7b7; }
+        .seleccionado { background: var(--primary) !important; color: white !important; border: 2px solid #fff; box-shadow: 0 0 20px var(--primary); }
+        .validado-naranja { background: #f59e0b !important; color: #0f172a !important; cursor: not-allowed; opacity: 0.8; border: 1px solid rgba(0,0,0,0.2); }
+        .form-compra { background: #ffffff; color: #0f172a; padding: 35px; border-radius: 24px; margin-top: 35px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .field-group { display: flex; flex-direction: column; gap: 8px; }
+        .field-group label { font-size: 0.85rem; font-weight: 700; color: #475569; padding-left: 5px; }
+        input { padding: 14px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 1rem; transition: 0.3s; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .btn { background: var(--whatsapp); color: white; border: none; padding: 18px; border-radius: 14px; font-weight: 800; cursor: pointer; font-size: 1rem; letter-spacing: 0.5px; transition: 0.4s; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+        .btn:hover { background: #16a34a; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3); }
+        .btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+        .grid::-webkit-scrollbar { width: 8px; }
+        .grid::-webkit-scrollbar-track { background: transparent; }
+        .grid::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="login.php" class="btn-admin-nav">⚙️ Panel Admin</a>
+
+    <div class="header">
+        <h1>✨ GRAN SORTEO MAGNO ✨</h1>
+        <p style="color: #94a3b8;">¡Participa y gana el premio mayor de $5,000 MXN!</p>
+        <div class="stats">
+            <div class="stat-card"><span>Precio Boleto</span><b>$100.00</b></div>
+            <div class="stat-card"><span>Números</span><b>1,000</b></div>
+            <div class="stat-card"><span>Sorteo</span><b>En Vivo</b></div>
+        </div>
+    </div>
+
+    <input type="text" id="busc" onkeyup="buscar()" placeholder="🔍 Escribe para buscar número..." style="width:100%; margin-bottom:20px; background:var(--card); color:white; border:1px solid #334155; border-radius: 15px; box-sizing: border-box; padding: 16px;">
+
+    <div class="grid" id="mainGrid"></div>
+
+    <form class="form-compra" id="formRifa">
+        <div class="field-group">
+            <label>🔢 Número Elegido</label>
+            <input type="number" id="input_numero" placeholder="Selecciona un cuadro" readonly>
+        </div>
+        
+        <div class="field-group">
+            <label>👤 Tu Nombre Completo</label>
+            <input type="text" id="input_nombre" placeholder="Nombre y Apellidos">
+        </div>
+
+        <div class="field-group">
+            <label>📧 Correo Electrónico</label>
+            <input type="email" id="input_email" placeholder="ejemplo@correo.com">
+        </div>
+
+        <div class="field-group">
+            <label>📲 Enviar a WhatsApp (Admin)</label>
+            <input type="text" id="input_destino" placeholder="Ej: 521XXXXXXXXXX">
+        </div>
+
+        <div class="field-group">
+            <label>📸 Comprobante de Pago</label>
+            <input type="file" id="input_foto" accept="image/*">
+        </div>
+
+        <button type="button" id="btnEnviar" class="btn" onclick="procesarCompra()">
+            ENVIAR COMPROBANTE 🚀
+        </button>
+    </form>
+</div>
+
+<script>
+    // --- (Funciones de render y búsqueda iguales) ---
+    function renderTienda() {
+        const grid = document.getElementById('mainGrid');
+        grid.innerHTML = ''; 
+        const validados = JSON.parse(localStorage.getItem('boletosValidados')) || [];
+        const bloqueados = JSON.parse(localStorage.getItem('boletosBloqueados')) || [];
+        const setOcupados = new Set([...validados.map(v => v.toString().padStart(3, '0')), ...bloqueados.map(b => b.toString().padStart(3, '0'))]);
+
+        for (let i = 1; i <= 1000; i++) {
+            const numStr = i.toString().padStart(3, '0');
+            const estaOcupado = setOcupados.has(numStr);
+            let div = document.createElement('div');
+            div.className = 'boleto ' + (estaOcupado ? 'validado-naranja' : 'disponible');
+            div.innerText = numStr;
+            div.onclick = function() {
+                if(estaOcupado) { alert("Este boleto ya ha sido adquirido."); return; }
+                const anterior = document.querySelector('.seleccionado');
+                if(anterior) anterior.classList.remove('seleccionado');
+                this.classList.add('seleccionado');
+                document.getElementById('input_numero').value = i; 
+                document.getElementById('formRifa').scrollIntoView({ behavior: 'smooth' });
+            };
+            grid.appendChild(div);
+        }
+    }
+
+    function buscar() {
+        let q = document.getElementById('busc').value;
+        let b = document.getElementsByClassName('boleto');
+        for(let i=0; i<b.length; i++) {
+            let num = b[i].innerText;
+            b[i].style.opacity = (q === "" || num.includes(q)) ? "1" : "0.1";
+        }
+    }
+
+    window.addEventListener('storage', (e) => { if (['boletosBloqueados', 'boletosValidados', 'registroComprobantes'].includes(e.key)) renderTienda(); });
+    window.addEventListener('focus', renderTienda);
+    document.addEventListener("DOMContentLoaded", renderTienda);
+
+    // --- FUNCIÓN PROCESAR: AHORA ENVÍA DATOS AL FORMULARIO DE TICKETS EN SEGUNDO PLANO ---
+    function procesarCompra() {
+        const numBoleto = document.getElementById('input_numero').value;
+        const nombre = document.getElementById('input_nombre').value;
+        const email = document.getElementById('input_email').value;
+        const destinoInput = document.getElementById('input_destino').value;
+        const destino = destinoInput.replace(/\D/g, '');
+        const fotoFile = document.getElementById('input_foto').files[0];
+        const btn = document.getElementById('btnEnviar');
+
+        if (!numBoleto || !nombre || !email || !destino || !fotoFile) {
+            alert("⚠️ Por favor completa todos los campos.");
+            return;
+        }
+
+        btn.innerHTML = "PROCESANDO... ⏳";
+        btn.disabled = true;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const base64Image = e.target.result;
+                const registros = JSON.parse(localStorage.getItem('registroComprobantes')) || [];
+                
+                // 1. Guardar en registro para Admin
+                registros.push({
+                    numero: numBoleto.toString().padStart(3, '0'),
+                    usuario: nombre,
+                    email: email,
+                    telefono: destinoInput,
+                    fecha: new Date().toLocaleString(),
+                    imagen: base64Image,
+                    estado: 'pendiente'
+                });
+                localStorage.setItem('registroComprobantes', JSON.stringify(registros));
+
+                // 2. CLAVE: Guardar datos para auto-completar ticket.php
+                // Usamos localStorage para que persista aunque cierren el navegador
+                const datosParaTicket = {
+                    nombre: nombre,
+                    email: email,
+                    numero: numBoleto.toString().padStart(3, '0'),
+                    celular: destinoInput
+                };
+                localStorage.setItem('datosUltimoTicket', JSON.stringify(datosParaTicket));
+
+                // 3. WhatsApp
+                const mensajeTexto = `*--- NUEVO APARTADO ---*\n\n* > Boleto:* ${numBoleto.toString().padStart(3, '0')}\n* > Participante:* ${nombre}\n* > Correo:* ${email}\n--------------------------\nAdjunto comprobante de pago.`;
+                const urlWa = `https://wa.me/${destino}?text=${encodeURIComponent(mensajeTexto)}`;
+                window.open(urlWa, '_blank');
+                
+                // 4. Feedback final
+                alert("✅ ¡Boleto apartado! Los datos se han guardado. Podrás generar tu ticket oficial en la sección correspondiente.");
+                
+                document.getElementById('formRifa').reset();
+                btn.innerHTML = "ENVIAR COMPROBANTE 🚀";
+                btn.disabled = false;
+                renderTienda();
+
+            } catch (err) {
+                alert("Error al procesar. La imagen podría ser muy pesada.");
+                btn.disabled = false;
+                btn.innerHTML = "ENVIAR COMPROBANTE 🚀";
+            }
+        };
+        reader.readAsDataURL(fotoFile);
+    }
+</script>
+</body>
+</html>

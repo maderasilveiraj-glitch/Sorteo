@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Control - Sorteo Magno</title>
+    <style>
+        /* ... (Tus estilos anteriores se mantienen igual) ... */
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
+        
+        .user-bar {
+            position: absolute;
+            top: 20px; right: 20px;
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 15px; border-radius: 50px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .user-icon {
+            width: 30px; height: 30px; background: #3b82f6;
+            border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 0.8rem; font-weight: bold;
+        }
+
+        .grid-admin { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+        
+        .num { 
+            padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold;
+            background: #1e293b; border: 1px solid #334155;
+            transition: 0.2s;
+        }
+        .num:hover:not(.bloqueado) { border-color: #3b82f6; background: #2d3748; }
+        
+        .naranja { background: #f59e0b !important; color: #000 !important; border-color: #f59e0b !important; }
+
+        .bloqueado { 
+            cursor: not-allowed !important; opacity: 0.8;
+            outline: 2px dashed rgba(255,255,255,0.4); outline-offset: -4px;
+        }
+        
+        .header-admin { margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 20px; }
+        .actions { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        
+        .btn { 
+            padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; 
+            font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;
+            transition: 0.3s; font-size: 0.9rem;
+        }
+        .btn-back { background: #3b82f6; color: white; }
+        .btn-receipts { background: #8b5cf6; color: white; }
+        .btn-ticket { background: #10b981; color: white; } 
+        .btn-reset { background: #ef4444; color: white; }
+
+        /* ESTILO PARA BOTÓN CERRAR SESIÓN */
+        .btn-logout { background: #475569; color: white; }
+        .btn-logout:hover { background: #334155; transform: scale(1.02); }
+
+        .legend { display: flex; gap: 20px; margin-top: 10px; font-size: 0.8rem; color: #94a3b8; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="user-bar">
+    <div class="user-icon" id="userInitial">A</div>
+    <div class="user-name">Sesión: <b id="displayUsername">Admin</b></div>
+</div>
+
+<div class="header-admin">
+    <h1>Panel de Administración</h1>
+    <p>Gestión de boletos y verificación en tiempo real.</p>
+    
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background: #1e293b; border: 1px solid #334155;"></div> Disponible</div>
+        <div class="legend-item"><div class="dot" style="background: #f59e0b;"></div> Manual</div>
+        <div class="legend-item"><div class="dot" style="background: #f59e0b; outline: 1px dashed white;"></div> Verificado</div>
+    </div>
+    
+    <div class="actions">
+        <a href="index.html" class="btn btn-back">⬅️ TIENDA</a>
+        <a href="comprobantes.html" class="btn btn-receipts">📸 COMPROBANTES</a>
+        <a href="ticket.php" class="btn btn-ticket">🎟️ GENERAR TICKET</a>
+        <button class="btn btn-reset" onclick="resetear()">🗑️ REINICIAR</button>
+        <button class="btn btn-logout" onclick="cerrarSesion()">🚪 CERRAR SESIÓN</button>
+    </div>
+</div>
+
+<div id="adminGrid" class="grid-admin"></div>
+
+<script>
+    const grid = document.getElementById('adminGrid');
+
+    document.addEventListener("DOMContentLoaded", () => {
+        actualizarUsuario();
+        renderAdmin();
+    });
+
+    // --- NUEVA FUNCIÓN DE CERRAR SESIÓN ---
+    function cerrarSesion() {
+        if(confirm("¿Deseas cerrar la sesión actual?")) {
+            // Eliminamos solo el dato de identidad para que el sistema de login sepa que salió
+            localStorage.removeItem('usuarioLogueado');
+            // Opcional: Si manejas una bandera de autenticación específica
+            localStorage.removeItem('admin_auth'); 
+            
+            // Redirigimos al index o login
+            window.location.href = "index.html"; 
+        }
+    }
+
+    function actualizarUsuario() {
+        const usuario = localStorage.getItem('usuarioLogueado') || "Admin";
+        document.getElementById('displayUsername').innerText = usuario;
+        document.getElementById('userInitial').innerText = usuario.charAt(0).toUpperCase();
+    }
+
+    // ... (El resto de tus funciones renderAdmin, toggleBoleto y resetear permanecen igual) ...
+
+    function renderAdmin() {
+        const comprobantes = JSON.parse(localStorage.getItem('registroComprobantes')) || [];
+        const validadosManual = JSON.parse(localStorage.getItem('boletosValidados')) || [];
+        const numerosBloqueados = new Set();
+        comprobantes.forEach(c => {
+            if (c.numeros && Array.isArray(c.numeros)) {
+                c.numeros.forEach(n => { numerosBloqueados.add(n.toString().padStart(3, '0')); });
+            }
+        });
+        localStorage.setItem('boletosBloqueados', JSON.stringify(Array.from(numerosBloqueados)));
+        const setManuales = new Set(validadosManual.map(n => n.toString().padStart(3, '0')));
+        grid.innerHTML = '';
+        for (let i = 1; i <= 1000; i++) {
+            const numStr = i.toString().padStart(3, '0');
+            const tieneRegistro = numerosBloqueados.has(numStr);
+            const estaManual = setManuales.has(numStr);
+            let div = document.createElement('div');
+            div.innerText = numStr;
+            if (tieneRegistro) { div.className = 'num naranja bloqueado'; } 
+            else if (estaManual) { div.className = 'num naranja'; div.onclick = () => toggleBoleto(numStr); } 
+            else { div.className = 'num'; div.onclick = () => toggleBoleto(numStr); }
+            grid.appendChild(div);
+        }
+    }
+
+    function toggleBoleto(numStr) {
+        let validados = JSON.parse(localStorage.getItem('boletosValidados')) || [];
+        validados = validados.map(n => n.toString().padStart(3, '0'));
+        const index = validados.indexOf(numStr);
+        if (index > -1) validados.splice(index, 1);
+        else validados.push(numStr);
+        localStorage.setItem('boletosValidados', JSON.stringify(validados));
+        renderAdmin();
+    }
+
+    function resetear() {
+        if(confirm("¿Estás seguro de limpiar todo? Esto borrará registros y liberará todos los boletos.")) {
+            localStorage.setItem('boletosValidados', "[]");
+            localStorage.setItem('boletosBloqueados', "[]");
+            localStorage.setItem('registroComprobantes', "[]");
+            renderAdmin();
+        }
+    }
+</script>
+</body>
+</html>
